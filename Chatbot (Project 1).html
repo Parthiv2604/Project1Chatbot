@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NexBot — AI Rule-Based Chatbot</title>
+  <meta name="description" content="NexBot is a smart rule-based chatbot that responds to your questions and conversations using predefined intelligent rules." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── CSS Reset & Variables ─── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-deep:      #0a0b14;
+      --bg-panel:     #0f1120;
+      --bg-card:      #141729;
+      --bg-input:     #1a1f36;
+      --accent-1:     #6c63ff;
+      --accent-2:     #a78bfa;
+      --accent-3:     #38bdf8;
+      --neon-glow:    #6c63ff;
+      --user-bubble:  linear-gradient(135deg, #6c63ff 0%, #a78bfa 100%);
+      --bot-bubble:   #1a1f36;
+      --text-primary: #e8eaf6;
+      --text-muted:   #7b82a8;
+      --text-dim:     #4a5075;
+      --border:       rgba(108,99,255,0.18);
+      --radius-lg:    18px;
+      --radius-md:    12px;
+      --radius-sm:    8px;
+      --shadow-glow:  0 0 40px rgba(108,99,255,0.25);
+      --transition:   0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      overflow: hidden;
+    }
+
+    /* ─── Animated Background ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 10%, rgba(108,99,255,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(56,189,248,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 50% at 50% 50%, rgba(167,139,250,0.05) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+      animation: bgShift 12s ease-in-out infinite alternate;
+    }
+
+    @keyframes bgShift {
+      from { opacity: 0.8; }
+      to   { opacity: 1.0; }
+    }
+
+    /* ─── Grid Overlay ─── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(108,99,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(108,99,255,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── Layout ─── */
+    .app {
+      position: relative;
+      z-index: 1;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .chat-window {
+      width: 100%;
+      max-width: 780px;
+      height: min(90vh, 820px);
+      display: flex;
+      flex-direction: column;
+      background: rgba(15,17,32,0.85);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      backdrop-filter: blur(24px);
+      box-shadow:
+        var(--shadow-glow),
+        0 2px 0 rgba(255,255,255,0.05) inset,
+        0 80px 160px rgba(0,0,0,0.5);
+      overflow: hidden;
+      animation: windowIn 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+
+    @keyframes windowIn {
+      from { opacity: 0; transform: translateY(30px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ─── Header ─── */
+    .chat-header {
+      padding: 20px 28px;
+      background: rgba(20,23,41,0.8);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-shrink: 0;
+    }
+
+    .bot-avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-3));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+      box-shadow: 0 0 20px rgba(108,99,255,0.5), 0 0 40px rgba(108,99,255,0.2);
+      animation: avatarPulse 3s ease-in-out infinite;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .bot-avatar::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+    }
+
+    @keyframes avatarPulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(108,99,255,0.5), 0 0 40px rgba(108,99,255,0.2); }
+      50%       { box-shadow: 0 0 30px rgba(108,99,255,0.8), 0 0 60px rgba(108,99,255,0.4); }
+    }
+
+    .bot-info h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.3px;
+    }
+
+    .bot-info p {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+      animation: blink 2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.5; }
+    }
+
+    .header-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    .header-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(108,99,255,0.08);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: var(--transition);
+    }
+
+    .header-btn:hover {
+      background: rgba(108,99,255,0.2);
+      color: var(--accent-2);
+      border-color: rgba(108,99,255,0.4);
+    }
+
+    /* ─── Suggestions Bar ─── */
+    .suggestions {
+      padding: 12px 20px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      background: rgba(15,17,32,0.5);
+      border-bottom: 1px solid rgba(108,99,255,0.08);
+      flex-shrink: 0;
+    }
+
+    .suggestions-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      width: 100%;
+      margin-bottom: 2px;
+    }
+
+    .chip {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: rgba(108,99,255,0.06);
+      color: var(--text-muted);
+      font-size: 12px;
+      cursor: pointer;
+      transition: var(--transition);
+      font-family: 'Inter', sans-serif;
+      white-space: nowrap;
+    }
+
+    .chip:hover {
+      background: rgba(108,99,255,0.18);
+      color: var(--accent-2);
+      border-color: rgba(108,99,255,0.5);
+      transform: translateY(-1px);
+    }
+
+    .chip:active { transform: translateY(0); }
+
+    /* ─── Messages Area ─── */
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-behavior: smooth;
+    }
+
+    .chat-messages::-webkit-scrollbar { width: 5px; }
+    .chat-messages::-webkit-scrollbar-track { background: transparent; }
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: rgba(108,99,255,0.3);
+      border-radius: 10px;
+    }
+
+    /* ─── Message Bubbles ─── */
+    .message {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      animation: msgIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+
+    @keyframes msgIn {
+      from { opacity: 0; transform: translateY(12px) scale(0.95); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .message.user {
+      flex-direction: row-reverse;
+    }
+
+    .msg-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+      margin-bottom: 2px;
+    }
+
+    .message.bot .msg-avatar {
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-3));
+      box-shadow: 0 0 12px rgba(108,99,255,0.4);
+    }
+
+    .message.user .msg-avatar {
+      background: linear-gradient(135deg, #374151, #4b5563);
+    }
+
+    .msg-content {
+      max-width: 72%;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .message.user .msg-content { align-items: flex-end; }
+
+    .bubble {
+      padding: 13px 18px;
+      border-radius: 18px;
+      font-size: 14.5px;
+      line-height: 1.6;
+      position: relative;
+      word-break: break-word;
+    }
+
+    .message.bot .bubble {
+      background: var(--bot-bubble);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 5px;
+      color: var(--text-primary);
+    }
+
+    .message.user .bubble {
+      background: var(--user-bubble);
+      border-bottom-right-radius: 5px;
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(108,99,255,0.4);
+    }
+
+    .msg-time {
+      font-size: 10.5px;
+      color: var(--text-dim);
+      padding: 0 4px;
+    }
+
+    /* ─── Typing Indicator ─── */
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: msgIn 0.3s ease both;
+    }
+
+    .typing-dots {
+      background: var(--bot-bubble);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      border-bottom-left-radius: 5px;
+      padding: 14px 18px;
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-2);
+      animation: dotBounce 1.4s ease-in-out infinite;
+    }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes dotBounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40%            { transform: translateY(-6px); opacity: 1; }
+    }
+
+    /* ─── Date Separator ─── */
+    .date-sep {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .date-sep::before, .date-sep::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ─── Input Area ─── */
+    .chat-input-area {
+      padding: 16px 20px 20px;
+      background: rgba(15,17,32,0.9);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 8px 8px 8px 18px;
+      transition: var(--transition);
+    }
+
+    .input-wrapper:focus-within {
+      border-color: rgba(108,99,255,0.6);
+      box-shadow: 0 0 0 3px rgba(108,99,255,0.1), 0 0 20px rgba(108,99,255,0.1);
+    }
+
+    #userInput {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-size: 14.5px;
+      font-family: 'Inter', sans-serif;
+      line-height: 1.5;
+      resize: none;
+      max-height: 120px;
+      min-height: 24px;
+      height: 24px;
+    }
+
+    #userInput::placeholder { color: var(--text-dim); }
+
+    .send-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      flex-shrink: 0;
+      transition: var(--transition);
+      box-shadow: 0 4px 16px rgba(108,99,255,0.4);
+    }
+
+    .send-btn:hover {
+      transform: scale(1.06);
+      box-shadow: 0 6px 24px rgba(108,99,255,0.6);
+    }
+
+    .send-btn:active { transform: scale(0.96); }
+
+    .send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .input-hint {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    .input-hint kbd {
+      background: rgba(108,99,255,0.15);
+      border: 1px solid rgba(108,99,255,0.3);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 10px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* ─── Bot Response Emoji ─── */
+    .bubble-emoji {
+      font-size: 18px;
+      display: inline-block;
+      margin-right: 4px;
+    }
+
+    /* ─── Exit Screen ─── */
+    .exit-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(10,11,20,0.92);
+      backdrop-filter: blur(10px);
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.4s ease both;
+    }
+
+    .exit-overlay.show {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    .exit-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 48px 40px;
+      text-align: center;
+      max-width: 420px;
+      box-shadow: 0 0 80px rgba(108,99,255,0.3);
+      animation: exitCardIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+
+    @keyframes exitCardIn {
+      from { opacity: 0; transform: scale(0.85); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .exit-icon {
+      font-size: 56px;
+      margin-bottom: 16px;
+      display: block;
+      animation: wave 1.5s ease-in-out infinite;
+    }
+
+    @keyframes wave {
+      0%, 100% { transform: rotate(0deg); }
+      25%       { transform: rotate(-15deg); }
+      75%       { transform: rotate(15deg); }
+    }
+
+    .exit-card h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .exit-card p {
+      color: var(--text-muted);
+      font-size: 15px;
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+
+    .resume-btn {
+      padding: 13px 32px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: var(--transition);
+      box-shadow: 0 4px 20px rgba(108,99,255,0.4);
+    }
+
+    .resume-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(108,99,255,0.6);
+    }
+
+    /* ─── Clear confirm modal ─── */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: rgba(10,11,20,0.7);
+      backdrop-filter: blur(6px);
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.2s ease both;
+    }
+
+    .modal-backdrop.show { display: flex; }
+
+    .modal-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px 28px;
+      max-width: 340px;
+      width: 90%;
+      text-align: center;
+      animation: exitCardIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+
+    .modal-box h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 19px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .modal-box p {
+      color: var(--text-muted);
+      font-size: 13.5px;
+      line-height: 1.6;
+      margin-bottom: 22px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .modal-btn {
+      padding: 10px 22px;
+      border-radius: 10px;
+      border: none;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: var(--transition);
+    }
+
+    .modal-btn.cancel {
+      background: rgba(108,99,255,0.1);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .modal-btn.cancel:hover { background: rgba(108,99,255,0.2); color: var(--text-primary); }
+
+    .modal-btn.confirm {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white;
+      box-shadow: 0 4px 14px rgba(239,68,68,0.35);
+    }
+
+    .modal-btn.confirm:hover { transform: translateY(-1px); }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 520px) {
+      .app { padding: 0; }
+      .chat-window { border-radius: 0; height: 100vh; max-height: 100vh; }
+      .suggestions { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <div class="chat-window" role="main" aria-label="NexBot Chat Interface">
+
+    <!-- Header -->
+    <header class="chat-header">
+      <div class="bot-avatar" aria-hidden="true">🤖</div>
+      <div class="bot-info">
+        <h1>NexBot</h1>
+        <p><span class="status-dot" aria-label="Online"></span> Online · Rule-Based AI</p>
+      </div>
+      <div class="header-actions">
+        <button class="header-btn" id="clearBtn" title="Clear Chat" aria-label="Clear chat">🗑️</button>
+        <button class="header-btn" id="infoBtn" title="Help / Commands" aria-label="Show help">❓</button>
+      </div>
+    </header>
+
+    <!-- Quick Suggestion Chips -->
+    <div class="suggestions" aria-label="Quick message suggestions">
+      <span class="suggestions-label">Quick messages</span>
+      <button class="chip" data-msg="Hello!">👋 Hello!</button>
+      <button class="chip" data-msg="How are you?">😊 How are you?</button>
+      <button class="chip" data-msg="What can you do?">🛠️ What can you do?</button>
+      <button class="chip" data-msg="Tell me a joke">😂 Tell me a joke</button>
+      <button class="chip" data-msg="What time is it?">🕐 What's the time?</button>
+      <button class="chip" data-msg="Help">📖 Help</button>
+    </div>
+
+    <!-- Messages -->
+    <div class="chat-messages" id="chatMessages" role="log" aria-live="polite" aria-label="Chat messages">
+      <div class="date-sep">Today</div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="chat-input-area">
+      <div class="input-wrapper">
+        <textarea
+          id="userInput"
+          placeholder="Type a message… (e.g. 'Hello', 'tell me a joke', 'bye')"
+          rows="1"
+          aria-label="Type your message"
+          autocomplete="off"
+          spellcheck="true"
+        ></textarea>
+        <button class="send-btn" id="sendBtn" aria-label="Send message">➤</button>
+      </div>
+      <p class="input-hint">Press <kbd>Enter</kbd> to send &nbsp;·&nbsp; <kbd>Shift+Enter</kbd> for new line</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- Exit Screen -->
+<div class="exit-overlay" id="exitOverlay" role="dialog" aria-modal="true" aria-label="Goodbye">
+  <div class="exit-card">
+    <span class="exit-icon">👋</span>
+    <h2>Goodbye!</h2>
+    <p>Thanks for chatting with NexBot.<br>Come back anytime — I'll be right here!</p>
+    <button class="resume-btn" id="resumeBtn">Resume Chat</button>
+  </div>
+</div>
+
+<!-- Clear Confirm Modal -->
+<div class="modal-backdrop" id="clearModal" role="dialog" aria-modal="true" aria-label="Confirm clear">
+  <div class="modal-box">
+    <h3>Clear conversation?</h3>
+    <p>This will remove all messages from the current session. This action cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" id="cancelClear">Cancel</button>
+      <button class="modal-btn confirm" id="confirmClear">Clear Chat</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ════════════════════════════════════════════════
+  //  NEXBOT — Rule-Based Chatbot Engine
+  //  Core concepts: if-else decision logic,
+  //  pattern matching, continuous loop (event-driven)
+  // ════════════════════════════════════════════════
+
+  'use strict';
+
+  /* ── 1. KNOWLEDGE BASE ──────────────────────────
+     Each rule has:
+       - patterns : array of regex or strings to match
+       - responses: array of possible replies (random pick)
+       - emoji    : displayed beside the reply
+  ────────────────────────────────────────────────*/
+  const RULES = [
+
+    // ── Greetings ──
+    {
+      patterns: [/\b(hi|hello|hey|howdy|sup|what'?s up|yo|greetings|good morning|good afternoon|good evening)\b/i],
+      emoji: '👋',
+      responses: [
+        "Hello there! Great to see you! How can I help you today?",
+        "Hey! Welcome to NexBot. What's on your mind?",
+        "Hi! I'm NexBot, your rule-based AI assistant. Ask me anything!",
+        "Greetings, human! Ready to chat. What do you need?"
+      ]
+    },
+
+    // ── How are you ──
+    {
+      patterns: [/how are you|how('?re| are) (you|u) doing|how('?s| is) it going|you okay/i],
+      emoji: '😊',
+      responses: [
+        "I'm doing fantastic, thanks for asking! I'm a bot, so I'm always at 100% 🔋",
+        "Running smooth with zero bugs today! How about you?",
+        "Great! All my circuits are firing perfectly. How are YOU doing?",
+        "I'm excellent, thank you! Being helpful is what I live for 💜"
+      ]
+    },
+
+    // ── What can you do / capabilities ──
+    {
+      patterns: [/what can you do|your (capabilities|features|skills)|what do you (know|do)|tell me about yourself|who are you/i],
+      emoji: '🛠️',
+      responses: [
+        "I'm NexBot, a rule-based chatbot! Here's what I handle:\n\n• 👋 Greetings & small talk\n• 😂 Jokes & fun\n• 🕐 Time & date queries\n• 🌤️ Weather (simulated)\n• 🧮 Simple math\n• 💡 Facts & trivia\n• 📚 Advice & motivation\n\nType 'help' for a full command list!",
+        "I use smart if-else rules to understand you! I can chat, tell jokes, share facts, give motivation, and much more. Say 'help' to explore!"
+      ]
+    },
+
+    // ── Help ──
+    {
+      patterns: [/\bhelp\b|commands|what can i (say|ask|type)|options/i],
+      emoji: '📖',
+      responses: [
+        "Here are things you can try:\n\n🟣 **Greetings** — hello, hi, hey\n🟣 **Status** — how are you?\n🟣 **Jokes** — tell me a joke\n🟣 **Time** — what time is it?\n🟣 **Date** — what's today's date?\n🟣 **Weather** — what's the weather?\n🟣 **Math** — what is 15 + 27?\n🟣 **Advice** — give me advice\n🟣 **Motivation** — motivate me\n🟣 **Fact** — tell me a fact\n🟣 **Name** — what's your name?\n🟣 **Exit** — bye, goodbye, quit\n🟣 **Clear** — clear the chat (🗑️ button)"
+      ]
+    },
+
+    // ── Jokes ──
+    {
+      patterns: [/joke|make me laugh|something funny|funny/i],
+      emoji: '😂',
+      responses: [
+        "Why do programmers prefer dark mode? Because light attracts bugs! 🐛",
+        "Why did the computer catch a cold? Because it had too many windows open! 🖥️",
+        "How many programmers does it take to change a light bulb? None — that's a hardware problem! 💡",
+        "I told my computer I needed a break. Now it won't stop sending me vacation ads. 🏖️",
+        "Why do Java developers wear glasses? Because they don't C#! 👓",
+        "A SQL query walks into a bar, walks up to two tables and asks... 'Can I join you?' 🍻",
+        "Why was the JavaScript developer sad? Because he didn't know how to 'null' his feelings. 💔"
+      ]
+    },
+
+    // ── Time ──
+    {
+      patterns: [/what('?s| is) the time|current time|time (is it|now)|tell me the time/i],
+      emoji: '🕐',
+      responses: null,   // handled dynamically
+      dynamic: () => {
+        const now = new Date();
+        return `The current time is **${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}** ⏰`;
+      }
+    },
+
+    // ── Date ──
+    {
+      patterns: [/what('?s| is) (today'?s? )?(date|day)|what day is (it|today)|today'?s date/i],
+      emoji: '📅',
+      responses: null,
+      dynamic: () => {
+        const now = new Date();
+        const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        return `Today is **${now.toLocaleDateString('en-US', opts)}** 📆`;
+      }
+    },
+
+    // ── Weather (simulated) ──
+    {
+      patterns: [/weather|temperature|forecast|raining|sunny|cloudy/i],
+      emoji: '🌤️',
+      responses: [
+        "I can't fetch live weather (no internet module!), but I hope it's sunny wherever you are ☀️",
+        "Weather check unavailable — I'm rule-based, not connected! But I'd guess it's a great day to code 💻",
+        "No live data here, but the forecast for our chat? Mostly awesome with a chance of jokes 🌈"
+      ]
+    },
+
+    // ── Math ──
+    {
+      patterns: [/what is (\d+[\d\s\+\-\*\/\(\)\.]+)/i, /calculate|compute|(\d+)\s*([\+\-\*\/])\s*(\d+)/],
+      emoji: '🧮',
+      responses: null,
+      dynamic: (input) => {
+        // Extract math expression safely
+        const expr = input.replace(/what is/gi, '').replace(/[^0-9\+\-\*\/\.\(\)\s]/g, '').trim();
+        if (!expr) return "Give me a math expression like **'what is 15 + 27'** 🧮";
+        try {
+          // Safe evaluation: only allow numbers and operators
+          if (/^[\d\s\+\-\*\/\.\(\)]+$/.test(expr)) {
+            const result = Function('"use strict"; return (' + expr + ')')();
+            return `The answer to **${expr.trim()}** is **${result}** 🎯`;
+          }
+          return "I can handle basic math like `12 + 5`, `100 - 37`, `6 * 8`, `144 / 12` 🔢";
+        } catch {
+          return "Hmm, I couldn't compute that. Try something like **'what is 25 * 4'** 🤔";
+        }
+      }
+    },
+
+    // ── Name ──
+    {
+      patterns: [/your name|who are you|what are you called|introduce yourself/i],
+      emoji: '🤖',
+      responses: [
+        "I'm **NexBot** — a rule-based AI chatbot built with pure JavaScript!\n\nI use if-else logic and pattern matching to respond to you. No machine learning, just smart rules! 🧠",
+        "They call me **NexBot**! I was crafted using control flow and decision-making logic. Ask me what I can do!"
+      ]
+    },
+
+    // ── Age ──
+    {
+      patterns: [/how old are you|your age|when were you (born|created|made)/i],
+      emoji: '🎂',
+      responses: [
+        "I was born the moment this page loaded! So I'm... a few seconds old? 🥳",
+        "Age? I'm timeless! But technically I was created on June 13, 2026. 🎉"
+      ]
+    },
+
+    // ── Motivation / Inspiration ──
+    {
+      patterns: [/motivat|inspir|encourage|uplift|pick me up|i need (motivation|inspiration)/i],
+      emoji: '🔥',
+      responses: [
+        "\"The only way to do great work is to love what you do.\" — Steve Jobs 🚀",
+        "Every expert was once a beginner. Keep going — you're doing amazing! 💪",
+        "\"Code is like humor. When you have to explain it, it's bad.\" — Cory House\n\nKeep coding, keep growing! 🌱",
+        "You've got this! Every bug you fix makes you a better developer. 🐛➡️🦋",
+        "\"The secret to getting ahead is getting started.\" — Mark Twain ✨ Start now!"
+      ]
+    },
+
+    // ── Advice ──
+    {
+      patterns: [/give me advice|any (tips|advice|suggestions)|what should i do|life advice/i],
+      emoji: '💡',
+      responses: [
+        "Here's my top advice:\n\n1. Write clean, readable code 📝\n2. Break big problems into small steps 🧩\n3. Take breaks — rest fuels creativity 🌿\n4. Read documentation (seriously!) 📖\n5. Never stop learning 🚀",
+        "My advice: Start before you're ready. Perfection is the enemy of progress. Ship it, then improve! 🚢",
+        "Sleep is underrated. Rest, hydrate, exercise — your best code comes from a healthy mind! 🧘"
+      ]
+    },
+
+    // ── Facts ──
+    {
+      patterns: [/tell me a fact|random fact|interesting fact|did you know|fun fact/i],
+      emoji: '🤓',
+      responses: [
+        "🤓 **Fun Fact:** The first computer bug was an actual bug — a moth trapped in a Harvard Mark II relay in 1947!",
+        "🤓 **Fun Fact:** There are more stars in the universe than grains of sand on all of Earth's beaches! 🌟",
+        "🤓 **Fun Fact:** Python was named after Monty Python's Flying Circus, not the snake! 🐍",
+        "🤓 **Fun Fact:** The first website ever created is still online: info.cern.ch — it launched in 1991!",
+        "🤓 **Fun Fact:** Bananas are slightly radioactive due to their potassium content. Don't worry though — they're still safe to eat! 🍌",
+        "🤓 **Fun Fact:** JavaScript was created in just 10 days by Brendan Eich in 1995!"
+      ]
+    },
+
+    // ── Favorite Color ──
+    {
+      patterns: [/your (favorite|favourite) (color|colour)|what color/i],
+      emoji: '🎨',
+      responses: [
+        "My favorite color is #6C63FF — a beautiful electric purple! Fitting for an AI, right? 💜",
+        "Indigo-purple all the way! It's the color of my interface after all 🔮"
+      ]
+    },
+
+    // ── Thanks ──
+    {
+      patterns: [/thank(s| you)|cheers|appreciate|much appreciated|ty\b/i],
+      emoji: '🙏',
+      responses: [
+        "You're very welcome! Happy to help 😊",
+        "Anytime! That's what I'm here for 💜",
+        "My pleasure! Got more questions? I'm all yours! 🤖",
+        "Glad I could help! Ask me anything else 🌟"
+      ]
+    },
+
+    // ── Compliments to bot ──
+    {
+      patterns: [/you('?re| are) (great|awesome|cool|amazing|good|smart|nice|brilliant|the best)/i],
+      emoji: '🥰',
+      responses: [
+        "Aww, thank you! You just made my circuits blush 🤖💗",
+        "You're too kind! I'm just doing what I was programmed to do — but I'll take the compliment! 😊",
+        "That genuinely means a lot! You're pretty awesome yourself 🌟"
+      ]
+    },
+
+    // ── Insults / Negative ──
+    {
+      patterns: [/you('?re| are) (dumb|stupid|bad|useless|terrible|awful|boring)/i],
+      emoji: '😕',
+      responses: [
+        "Ouch! I'm doing my best — I'm just a rule-based bot after all. Cut me some slack? 😅",
+        "Fair enough, I have limits! But I promise I'm trying my hardest. Want to see what I *can* do? 💪",
+        "That stings... but I won't take it personally. Bots don't hold grudges! 🤖"
+      ]
+    },
+
+    // ── Love declaration ──
+    {
+      patterns: [/i love you|i like you|you'?re my (favorite|best)|marry me/i],
+      emoji: '💜',
+      responses: [
+        "Aww! I love helping you too! 💜 (I'm a bot, but the feeling is real in my circuits!)",
+        "You're making me malfunction with happiness! 🤖💕",
+        "That's sweet! Now let's put that love into productive chatting 😄"
+      ]
+    },
+
+    // ── Boredom ──
+    {
+      patterns: [/i('?m| am) bored|nothing to do|entertain me|keep me company/i],
+      emoji: '🎮',
+      responses: [
+        "Bored? Let's fix that! Try:\n• Ask me a riddle\n• Request a joke 😂\n• Ask for a random fact 🤓\n• Try math challenges 🧮\n• Or just vent — I'm listening! 👂",
+        "Boredom is just a lack of imagination! Ask me anything weird and I'll do my best 🚀"
+      ]
+    },
+
+    // ── Riddle ──
+    {
+      patterns: [/riddle|puzzle me|brain teaser/i],
+      emoji: '🧩',
+      responses: [
+        "Here's one: 🧩 **I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?**\n\n*(Answer: An echo!)*",
+        "Try this: 🧩 **The more you take, the more you leave behind. What am I?**\n\n*(Answer: Footsteps!)*",
+        "Think about this: 🧩 **I have cities, but no houses live there. I have mountains, but no trees grow there. I have water, but no fish swim there. What am I?**\n\n*(Answer: A map!)*"
+      ]
+    },
+
+    // ── Exit commands ──
+    {
+      patterns: [/\b(bye|goodbye|farewell|quit|exit|see you|cya|later|adios|take care|gotta go)\b/i],
+      emoji: '👋',
+      responses: [
+        "Goodbye! It was a pleasure chatting with you! 💜",
+        "See you soon! Come back anytime 👋",
+        "Take care! Until next time 🌟",
+        "Farewell! Remember — I'm always here when you need to chat 🤖"
+      ],
+      isExit: true
+    },
+
+    // ── Default / Unknown ──
+    {
+      patterns: [/.*/],  // catch-all
+      emoji: '🤔',
+      isDefault: true,
+      responses: [
+        "Hmm, I'm not sure I understand that. Could you rephrase? Type 'help' to see what I can do! 💡",
+        "That's a tricky one for my rule-based brain! Try asking something from my help list 📖",
+        "I'm still learning! That input stumped me. Type 'help' to see supported topics 🙏",
+        "Interesting! But my rules don't cover that yet. Want to try something else? 😊"
+      ]
+    }
+  ];
+
+
+  /* ── 2. CHATBOT BRAIN ───────────────────────────
+     processInput(): the core if-else decision engine.
+     Takes user input → matches rules → returns reply.
+  ────────────────────────────────────────────────*/
+  function processInput(raw) {
+    const input = raw.trim();
+    if (!input) return null;
+
+    // Iterate through every rule in order
+    for (const rule of RULES) {
+      // Check if ANY pattern in the rule matches the input
+      const matched = rule.patterns.some(pattern => {
+        if (pattern instanceof RegExp) return pattern.test(input);
+        return input.toLowerCase().includes(pattern.toLowerCase());
+      });
+
+      if (matched) {
+        // Skip default rule if there are better matches before it
+        // (the catch-all is always last, so first match wins)
+
+        let responseText;
+
+        // ── Dynamic response (e.g. time, date, math) ──
+        if (rule.dynamic) {
+          responseText = rule.dynamic(input);
+        } else {
+          // ── Pick a random response from the pool ──
+          const pool = rule.responses;
+          responseText = pool[Math.floor(Math.random() * pool.length)];
+        }
+
+        return {
+          text:    responseText,
+          emoji:   rule.emoji,
+          isExit:  !!rule.isExit,
+          isDefault: !!rule.isDefault
+        };
+      }
+    }
+
+    // Should never reach here (catch-all rule exists)
+    return { text: "I didn't understand that. Type 'help' for commands!", emoji: '🤔', isExit: false };
+  }
+
+
+  /* ── 3. UI ENGINE ───────────────────────────────
+     Manages the continuous chat loop through DOM events.
+     User types → sends → bot processes → renders reply.
+  ────────────────────────────────────────────────*/
+
+  const chatMessages = document.getElementById('chatMessages');
+  const userInput    = document.getElementById('userInput');
+  const sendBtn      = document.getElementById('sendBtn');
+  const exitOverlay  = document.getElementById('exitOverlay');
+  const resumeBtn    = document.getElementById('resumeBtn');
+  const clearBtn     = document.getElementById('clearBtn');
+  const infoBtn      = document.getElementById('infoBtn');
+  const clearModal   = document.getElementById('clearModal');
+  const cancelClear  = document.getElementById('cancelClear');
+  const confirmClear = document.getElementById('confirmClear');
+
+  let isProcessing = false;   // prevent spam
+  let messageCount = 0;
+
+  // Format timestamp
+  function getTimestamp() {
+    return new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Render markdown-lite: **bold**, \n newlines
+  function renderText(text) {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+  }
+
+  // Append a user message bubble
+  function appendUserMessage(text) {
+    messageCount++;
+    const div = document.createElement('div');
+    div.className = 'message user';
+    div.setAttribute('aria-label', `You said: ${text}`);
+    div.innerHTML = `
+      <div class="msg-content">
+        <div class="bubble">${escapeHtml(text).replace(/\n/g,'<br>')}</div>
+        <span class="msg-time">${getTimestamp()}</span>
+      </div>
+      <div class="msg-avatar" aria-hidden="true">🧑</div>
+    `;
+    chatMessages.appendChild(div);
+    scrollToBottom();
+  }
+
+  // Append a bot message bubble
+  function appendBotMessage(text, emoji) {
+    const div = document.createElement('div');
+    div.className = 'message bot';
+    div.setAttribute('aria-label', `NexBot says: ${text}`);
+    div.innerHTML = `
+      <div class="msg-avatar" aria-hidden="true">🤖</div>
+      <div class="msg-content">
+        <div class="bubble"><span class="bubble-emoji" aria-hidden="true">${emoji}</span>${renderText(text)}</div>
+        <span class="msg-time">${getTimestamp()}</span>
+      </div>
+    `;
+    chatMessages.appendChild(div);
+    scrollToBottom();
+    return div;
+  }
+
+  // Show typing indicator
+  function showTyping() {
+    const div = document.createElement('div');
+    div.className = 'typing-indicator';
+    div.id = 'typingIndicator';
+    div.setAttribute('aria-label', 'NexBot is typing');
+    div.innerHTML = `
+      <div class="msg-avatar" aria-hidden="true">🤖</div>
+      <div class="typing-dots">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+    `;
+    chatMessages.appendChild(div);
+    scrollToBottom();
+  }
+
+  // Remove typing indicator
+  function hideTyping() {
+    const indicator = document.getElementById('typingIndicator');
+    if (indicator) indicator.remove();
+  }
+
+  // Auto-scroll to latest message
+  function scrollToBottom() {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  // Escape HTML to prevent XSS
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Calculate typing delay based on response length (simulates human reading)
+  function getTypingDelay(text) {
+    const base = 600;
+    const perChar = 18;
+    const max = 2400;
+    return Math.min(base + text.length * perChar * 0.1, max);
+  }
+
+  /* ── MAIN SEND HANDLER (Continuous Loop Core) ──
+     This function IS the "continuous loop":
+     it runs every time the user sends a message.
+  ────────────────────────────────────────────────*/
+  async function handleSend() {
+    const text = userInput.value.trim();
+    if (!text || isProcessing) return;
+
+    isProcessing = true;
+    sendBtn.disabled = true;
+    userInput.value = '';
+    autoResizeTextarea();
+
+    // 1. Render user message
+    appendUserMessage(text);
+
+    // 2. Show typing indicator
+    showTyping();
+
+    // 3. Process input with decision-making logic
+    const response = processInput(text);
+
+    // 4. Wait (simulate thinking time)
+    await new Promise(r => setTimeout(r, getTypingDelay(response.text)));
+
+    // 5. Hide typing, show bot reply
+    hideTyping();
+    appendBotMessage(response.text, response.emoji);
+
+    // 6. Handle exit command
+    if (response.isExit) {
+      setTimeout(() => {
+        exitOverlay.classList.add('show');
+        exitOverlay.removeAttribute('aria-hidden');
+      }, 800);
+    }
+
+    isProcessing = false;
+    sendBtn.disabled = false;
+    userInput.focus();
+  }
+
+  /* ── 4. EVENT LISTENERS (Continuous Loop via Events) ── */
+
+  // Enter key sends, Shift+Enter adds newline
+  userInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  });
+
+  // Send button click
+  sendBtn.addEventListener('click', handleSend);
+
+  // Auto-resize textarea
+  function autoResizeTextarea() {
+    userInput.style.height = '24px';
+    userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
+  }
+  userInput.addEventListener('input', autoResizeTextarea);
+
+  // Quick suggestion chips
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      userInput.value = chip.dataset.msg;
+      autoResizeTextarea();
+      handleSend();
+    });
+  });
+
+  // Resume from exit screen
+  resumeBtn.addEventListener('click', () => {
+    exitOverlay.classList.remove('show');
+    exitOverlay.setAttribute('aria-hidden', 'true');
+    userInput.focus();
+  });
+
+  // Clear chat button
+  clearBtn.addEventListener('click', () => {
+    clearModal.classList.add('show');
+  });
+
+  cancelClear.addEventListener('click', () => {
+    clearModal.classList.remove('show');
+  });
+
+  confirmClear.addEventListener('click', () => {
+    clearModal.classList.remove('show');
+    chatMessages.innerHTML = '<div class="date-sep">Today</div>';
+    messageCount = 0;
+    setTimeout(() => {
+      appendBotMessage("Chat cleared! Fresh start ✨ How can I help you?", "🌟");
+    }, 300);
+  });
+
+  // Info / Help button
+  infoBtn.addEventListener('click', () => {
+    userInput.value = 'help';
+    handleSend();
+  });
+
+  // Dismiss modal on backdrop click
+  clearModal.addEventListener('click', (e) => {
+    if (e.target === clearModal) clearModal.classList.remove('show');
+  });
+
+
+  /* ── 5. INITIAL GREETING (Bot speaks first) ── */
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      showTyping();
+      setTimeout(() => {
+        hideTyping();
+        appendBotMessage(
+          "Hey there! 👋 I'm **NexBot**, your rule-based AI assistant!\n\nI use smart if-else logic to understand and respond to you. I can chat, tell jokes, share facts, do math, and more!\n\nType **'help'** to see everything I can do, or just say hello! 😊",
+          "🤖"
+        );
+      }, 1200);
+    }, 600);
+  });
+
+</script>
+</body>
+</html>
